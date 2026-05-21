@@ -1,13 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 """
 HydroBound-ML Assistant
 =======================
+Version: 1.0.0
+Year: 2026
 
+Author:
+-------
+Patryk Wróblewski
+PL: Katedra Rozpoznania Obrazowego, Wydział Inżynierii Lądowej i Geodezji, 
+    Wojskowa Akademia Techniczna im. Jarosława Dąbrowskiego, 
+    ul. gen. Sylwestra Kaliskiego 2, 00-908 Warszawa.
+EN: Department of Imagery Intelligence, Faculty of Civil Engineering and Geodesy, 
+    Military University of Technology, 
+    2 gen. Sylwestra Kaliskiego St., 00-908 Warsaw, Poland.
+
+Publication Reference:
+----------------------
+[Insert Title of the Article / DOI Link here upon publication]
+
+Description:
+------------
 An advanced hybrid machine learning and Object-Based Image Analysis (OBIA) tool 
 designed for automated water body delineation and high-precision boundary extraction 
 from aerial and UAV-based multispectral imagery.
@@ -101,16 +119,16 @@ class BandSelectionDialog(QDialog):
         self.setWindowTitle("Select Spectral Bands")
         self.setModal(True)
         self.setMinimumWidth(350)
-        
+
         self.needs_nir = nir_count is not None
-        
+
         layout = QVBoxLayout(self)
         info_label = QLabel("Please map the correct spectral bands from your input orthomosaics:")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
-        
+
         form_layout = QFormLayout()
-        
+
         self.cb_red = QComboBox()
         self.cb_green = QComboBox()
         self.cb_blue = QComboBox()
@@ -118,29 +136,29 @@ class BandSelectionDialog(QDialog):
             self.cb_red.addItem(f"Band {i}", i)
             self.cb_green.addItem(f"Band {i}", i)
             self.cb_blue.addItem(f"Band {i}", i)
-            
+
         if rgb_count >= 1: self.cb_red.setCurrentIndex(0)
         if rgb_count >= 2: self.cb_green.setCurrentIndex(1)
         if rgb_count >= 3: self.cb_blue.setCurrentIndex(2)
-        
+
         form_layout.addRow("Red Band (from RGB ortho):", self.cb_red)
         form_layout.addRow("Green Band (from RGB ortho):", self.cb_green)
         form_layout.addRow("Blue Band (from RGB ortho):", self.cb_blue)
-        
+
         if self.needs_nir:
             self.cb_nir = QComboBox()
             for i in range(1, nir_count + 1):
                 self.cb_nir.addItem(f"Band {i}", i)
             self.cb_nir.setCurrentIndex(0)
             form_layout.addRow("NIR Band (from NIR ortho):", self.cb_nir)
-        
+
         layout.addLayout(form_layout)
-        
+
         btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
-        
+
     def get_mapping(self):
         """Returns a dictionary containing user-defined band indices."""
         mapping = {
@@ -162,7 +180,7 @@ class HydroBound_ML_App(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("HydroBound-ML Assistant v.1.0.0")
-        
+
         # Directory and project state management
         self.base_dir = ""
         self.input_dir = "" 
@@ -170,29 +188,29 @@ class HydroBound_ML_App(QMainWindow):
         self.model_dir = ""
         self.project_metadata = None
         self.selected_kml_path = ""
-        
+
         # Spatial data caching
         self.data_srcs = {}
         self.layer_norms = {} 
         self.session_clicks = [] 
         self.samples_X, self.samples_y, self.sample_coords = [], [], [] 
-        
+
         # UI state variables
         self.current_layer = "ndwi"
         self.full_extent = [0, 1, 0, 1]
         self.current_model_version = 0 
-        
+
         # Vector and KML geometries
         self.vector_mask = None 
         self.vector_lines_cache = [] 
         self.aoi_lines_cache = [] 
-        
+
         # Matplotlib artists
         self.img_artist = None
         self.vector_artist = None
         self.aoi_artist = None 
         self._is_updating = False 
-        
+
         # Canvas interaction states
         self._pan_active = False
         self._pan_start_x = None
@@ -202,11 +220,11 @@ class HydroBound_ML_App(QMainWindow):
 
         self._measure_points = []
         self._measure_artists = []
-        
+
         self.edit_mode = None  # Valid states: None, 'del_poly', 'fill_hole', 'add_poly', 'cut_poly'
         self.edit_drawing_points = []
         self.edit_drawing_artists = []
-        
+
         # Custom color palettes for spectral indices and DTM representation
         cmap_blue = LinearSegmentedColormap.from_list("w_blue", ["white", "darkblue"])
         cmap_blue.set_bad(color='white', alpha=0.0)
@@ -216,17 +234,17 @@ class HydroBound_ML_App(QMainWindow):
         cmap_red.set_bad(color='white', alpha=0.0)
         cmap_dtm = LinearSegmentedColormap.from_list("local_topo", ["#78B856", "#E7D97B", "#B67A41", "#EBEBEB"])
         cmap_dtm.set_bad(color='white', alpha=0.0)
-        
+
         self.cmaps = {
             "ndwi": cmap_blue, "ndvi": cmap_green, "ngrdi": cmap_red,
             "ortho_rgb": None, "ortho_nir": "gray", "dtm": cmap_dtm
         }
-        
+
         # Rendering optimizer
         self.render_timer = QTimer()
         self.render_timer.setSingleShot(True)
         self.render_timer.timeout.connect(self.fetch_high_res_raster) 
-        
+
         self._setup_ui()
         self.showMaximized()
 
@@ -249,19 +267,19 @@ class HydroBound_ML_App(QMainWindow):
             b.setMinimumHeight(45)
             self.btns.append(b)
             sidebar.addWidget(b)
-            
+
         self.btns[0].clicked.connect(self.load_project)
         self.btns[1].clicked.connect(self.predict_mask)
         self.btns[2].clicked.connect(self.train_model)
         self.btns[3].clicked.connect(self.export_geojson)
-        
+
         sidebar.addSpacing(10)
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         sidebar.addWidget(separator)
         sidebar.addSpacing(5)
-        
+
         self.btn_measure = QPushButton("📏 Measure Distance")
         self.btn_measure.setMinimumHeight(35)
         self.btn_measure.setCheckable(True)
@@ -284,13 +302,13 @@ class HydroBound_ML_App(QMainWindow):
         """)
         self.btn_measure.clicked.connect(self.toggle_measure)
         sidebar.addWidget(self.btn_measure)
-        
+
         sidebar.addSpacing(15)
         self.sample_label = QLabel("Pending ML Clicks -> Water: 0 | Non-Water: 0")
         self.sample_label.setStyleSheet("font-weight: bold; font-size: 13px;")
         self.sample_label.setWordWrap(True) 
         sidebar.addWidget(self.sample_label)
-        
+
         self.version_label = QLabel("Model Version: None")
         self.version_label.setStyleSheet("color: blue; font-style: italic; font-weight: bold;")
         sidebar.addWidget(self.version_label)
@@ -303,7 +321,7 @@ class HydroBound_ML_App(QMainWindow):
         self.canvas = FigureCanvas(self.fig)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_facecolor('#EAEAEA') 
-        
+
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.map_layout.addWidget(self.toolbar)
         self.map_layout.addWidget(self.canvas)
@@ -323,11 +341,11 @@ class HydroBound_ML_App(QMainWindow):
         right_widget.setMaximumWidth(450)
         right_main_layout = QVBoxLayout(right_widget)
         right_main_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        
+
         scroll_content = QWidget()
         layer_panel = QVBoxLayout(scroll_content)
         layer_panel.setContentsMargins(10, 10, 10, 10)
@@ -337,19 +355,19 @@ class HydroBound_ML_App(QMainWindow):
         self.layer_group = QButtonGroup(self)
         self.layer_buttons = {} 
         layers = ["ndwi", "ndvi", "ngrdi", "ortho_rgb", "ortho_nir", "dtm"]
-        
+
         for i, name in enumerate(layers):
             rb = QRadioButton(name.upper())
             rb.setEnabled(False) 
             self.layer_group.addButton(rb, i)
             self.layer_buttons[name] = rb
             layer_panel.addWidget(rb)
-            
+
         self.layer_group.idClicked.connect(self.change_layer)
-        
+
         layer_panel.addSpacing(10)
         self.check_aoi = QCheckBox("Show AOI Mask (KML)")
-        self.check_aoi.setStyleSheet("font-weight: bold; color: #00AAAA;") 
+        self.check_aoi.setStyleSheet("font-weight: bold; color: #DAA520;")
         self.check_aoi.stateChanged.connect(self.toggle_aoi_visibility)
         layer_panel.addWidget(self.check_aoi)
 
@@ -357,7 +375,7 @@ class HydroBound_ML_App(QMainWindow):
         self.check_mask.setStyleSheet("font-weight: bold; color: magenta;")
         self.check_mask.stateChanged.connect(self.toggle_vector_visibility)
         layer_panel.addWidget(self.check_mask)
-        
+
         # =============================================================
         # 2. DEFINING WIDGET GROUPS (MEMORY CREATION)
         # =============================================================
@@ -378,7 +396,7 @@ class HydroBound_ML_App(QMainWindow):
 
         self.spin_slic_area = QDoubleSpinBox()
         self.spin_slic_area.setRange(0.1, 50.0); self.spin_slic_area.setSingleStep(0.5); self.spin_slic_area.setSuffix(" m²")
-        
+
         self.spin_slic_compactness = QDoubleSpinBox()
         self.spin_slic_compactness.setRange(0.1, 100.0); self.spin_slic_compactness.setValue(15.0); self.spin_slic_compactness.setSingleStep(1.0)
 
@@ -400,7 +418,7 @@ class HydroBound_ML_App(QMainWindow):
         self.train_group = QGroupBox("Model Training Parameters (Step 3)")
         self.train_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         train_layout = QFormLayout(self.train_group)
-        
+
         self.spin_scale_1 = QDoubleSpinBox()
         self.spin_scale_1.setRange(0.1, 50.0); self.spin_scale_1.setValue(1.00); self.spin_scale_1.setSingleStep(0.50)
         self.spin_scale_2 = QDoubleSpinBox()
@@ -417,16 +435,16 @@ class HydroBound_ML_App(QMainWindow):
         self.spin_otsu_water_min.setRange(-1.0, 1.0); self.spin_otsu_water_min.setValue(-1.00); self.spin_otsu_water_min.setSingleStep(0.05)
         self.spin_otsu_land_max = QDoubleSpinBox()
         self.spin_otsu_land_max.setRange(-1.0, 1.0); self.spin_otsu_land_max.setValue(1.00); self.spin_otsu_land_max.setSingleStep(0.05)
-        
+
         self.spin_otsu_base = QSpinBox()
         self.spin_otsu_base.setRange(0, 100000); self.spin_otsu_base.setValue(500); self.spin_otsu_base.setSingleStep(100)
-        
+
         self.spin_weight = QDoubleSpinBox()
         self.spin_weight.setRange(1.0, 100000.0); self.spin_weight.setValue(2.00)
-        
+
         self.spin_clones = QSpinBox()
         self.spin_clones.setRange(1, 10000); self.spin_clones.setValue(20)
-        
+
         self.spin_noise_aug = QDoubleSpinBox()
         self.spin_noise_aug.setDecimals(3); self.spin_noise_aug.setRange(0.0, 0.200); self.spin_noise_aug.setValue(0.005); self.spin_noise_aug.setSingleStep(0.005)
 
@@ -459,12 +477,12 @@ class HydroBound_ML_App(QMainWindow):
         self.edit_group = QGroupBox("Vector Editing (Step 3.5)")
         self.edit_group.setStyleSheet("QGroupBox { font-weight: bold; color: darkorange; }")
         edit_layout = QVBoxLayout(self.edit_group)
-        
+
         self.btn_edit_del = QPushButton("Delete Polygon Part (Click)")
         self.btn_edit_fill = QPushButton("Fill Inner Hole (Click)")
         self.btn_edit_add = QPushButton("Draw Bridge / Add (Left Click, Right to Close)")
         self.btn_edit_cut = QPushButton("Draw Cut / Remove (Left Click, Right to Close)")
-        
+
         self.edit_btns = [self.btn_edit_del, self.btn_edit_fill, self.btn_edit_add, self.btn_edit_cut]
         for btn in self.edit_btns:
             btn.setCheckable(True)
@@ -475,18 +493,18 @@ class HydroBound_ML_App(QMainWindow):
         self.grid_group = QGroupBox("Grid Export Settings (Step 4)")
         self.grid_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         grid_layout = QFormLayout(self.grid_group)
-        
+
         self.check_export_grid = QCheckBox("Enable Grid Export (Requires DTM)")
         self.check_export_grid.setChecked(False)
         self.check_export_grid.stateChanged.connect(self.toggle_grid_settings)
-        
+
         self.spin_grid_size = QSpinBox()
         self.spin_grid_size.setRange(10, 10000); self.spin_grid_size.setValue(500); self.spin_grid_size.setSuffix(" m"); self.spin_grid_size.setEnabled(False)
-        
+
         self.combo_z_method = QComboBox()
         self.combo_z_method.addItems(["mean", "min", "max"])
         self.combo_z_method.setEnabled(False)
-        
+
         grid_layout.addRow(self.check_export_grid)
         grid_layout.addRow("Grid Size:", self.spin_grid_size)
         grid_layout.addRow("DTM Z-Method:", self.combo_z_method)
@@ -497,7 +515,7 @@ class HydroBound_ML_App(QMainWindow):
         self.spin_scale_1.valueChanged.connect(lambda v: self.spin_scale_2.setMinimum(v + 0.1))
         self.spin_scale_2.valueChanged.connect(lambda v: self.spin_scale_3.setMinimum(v + 0.1))
         self.spin_scale_1.valueChanged.connect(self.auto_update_postprocessing)
-        
+
         # Initialize default values
         self.auto_update_postprocessing(self.spin_scale_1.value())
 
@@ -506,20 +524,20 @@ class HydroBound_ML_App(QMainWindow):
         # =============================================================
         layer_panel.addSpacing(10)
         layer_panel.addWidget(self.pred_group)
-        
+
         layer_panel.addSpacing(10)
         layer_panel.addWidget(self.train_group)
-        
+
         layer_panel.addSpacing(10)
         layer_panel.addWidget(self.edit_group)
-        
+
         layer_panel.addSpacing(10)
         layer_panel.addWidget(self.grid_group)
-        
+
         layer_panel.addStretch()
         scroll_area.setWidget(scroll_content)
         right_main_layout.addWidget(scroll_area)
-        
+
         main_layout.addWidget(left_widget)
         main_layout.addWidget(self.map_frame, 1) 
         main_layout.addWidget(right_widget)
@@ -541,7 +559,7 @@ class HydroBound_ML_App(QMainWindow):
             self.edit_mode = None
             self.clear_edit_drawing()
             return
-            
+
         # Uncheck all other edit buttons and measurement tool
         for b in self.edit_btns:
             if b != sender: b.setChecked(False)
@@ -665,7 +683,7 @@ class HydroBound_ML_App(QMainWindow):
         if p:
             src = rasterio.open(p)
             self.data_srcs[layer_name] = src
-            
+
             if layer_name not in self.layer_norms and layer_name not in ['ortho_rgb', 'ortho_nir']:
                 ov_factors = src.overviews(1)
                 if ov_factors:
@@ -676,10 +694,10 @@ class HydroBound_ML_App(QMainWindow):
                     w = 2000
                     win = rasterio.windows.Window(max(0, cx - w//2), max(0, cy - w//2), min(src.width, w), min(src.height, w))
                     sample = src.read(1, window=win)
-                    
+
                 if src.dtypes[0] == 'int16' and layer_name in ['ndwi', 'ndvi', 'ngrdi']:
                     sample = sample.astype(float) / 10000.0
-                
+
                 valid = sample[np.isfinite(sample) & (sample > -100)] if layer_name == 'dtm' else sample[np.isfinite(sample) & (sample >= -1.0) & (sample <= 1.0)]
                 if len(valid) > 0:
                     vmin, vmax = np.percentile(valid, 2), np.percentile(valid, 98)
@@ -707,7 +725,7 @@ class HydroBound_ML_App(QMainWindow):
                 rb.setText(f"[MISSING] {name.upper()}")
                 rb.setEnabled(False)
                 rb.setStyleSheet("color: gray;")
-                
+
         dtm_exists = self.find_layer_path("dtm") is not None
         if not dtm_exists:
             self.check_export_grid.setChecked(False)
@@ -727,19 +745,19 @@ class HydroBound_ML_App(QMainWindow):
         """
         required = ["ndwi", "ndvi", "ngrdi"]
         missing = [idx for idx in required if not self.find_layer_path(idx)]
-        
+
         if not missing: 
             return True 
-            
+
         needs_nir = "ndvi" in missing or "ndwi" in missing
-        
+
         rgb_path = self.find_layer_path("ortho_rgb")
         nir_path = self.find_layer_path("ortho_nir") if needs_nir else None
-        
+
         missing_core_msg = []
         if not rgb_path: missing_core_msg.append("'ortho_rgb'")
         if needs_nir and not nir_path: missing_core_msg.append("'ortho_nir'")
-        
+
         if missing_core_msg: 
             QMessageBox.warning(
                 self, 
@@ -777,7 +795,7 @@ class HydroBound_ML_App(QMainWindow):
         band_dialog = BandSelectionDialog(rgb_bands, nir_bands, self)
         if band_dialog.exec() == QDialog.DialogCode.Rejected:
             return False
-            
+
         mapping = band_dialog.get_mapping()
 
         p = QProgressDialog(f"Generating Missing Indices: {', '.join(missing).upper()}...", "Cancel", 0, 100, self)
@@ -785,13 +803,13 @@ class HydroBound_ML_App(QMainWindow):
         p.setWindowModality(Qt.WindowModality.ApplicationModal)
         p.show()
         QCoreApplication.processEvents()
-        
+
         src_rgb, src_nir, nir_vrt = None, None, None
         try:
             # Enforce strict rasterio environment context to clear I/O caches post-execution
             with rasterio.Env():
                 src_rgb = rasterio.open(rgb_path)
-                
+
                 if needs_nir:
                     src_nir = rasterio.open(nir_path)
                     vrt_options = {
@@ -802,13 +820,13 @@ class HydroBound_ML_App(QMainWindow):
                         'resampling': Resampling.nearest
                     }
                     nir_vrt = WarpedVRT(src_nir, **vrt_options)
-                    
+
                 meta = src_rgb.meta.copy()
                 meta.update(dtype=rasterio.float32, count=1, compress='lzw', tiled=True, nodata=-1.5)
                 meta.update(blockxsize=512, blockysize=512)
-                
+
                 dst_files = {idx: rasterio.open(os.path.join(self.input_dir, f"{idx.upper()}.tif"), 'w', **meta) for idx in missing}
-                
+
                 chunk_size = 4096
                 windows = []
                 for row_off in range(0, src_rgb.height, chunk_size):
@@ -816,65 +834,65 @@ class HydroBound_ML_App(QMainWindow):
                         w = min(chunk_size, src_rgb.width - col_off)
                         h = min(chunk_size, src_rgb.height - row_off)
                         windows.append(rasterio.windows.Window(col_off, row_off, w, h))
-                
+
                 rgb_nodata = src_rgb.nodata
                 nir_nodata = src_nir.nodata if needs_nir else None
                 total_windows = len(windows)
-                
+
                 for i, window in enumerate(windows):
                     if p.wasCanceled(): 
                         for dst in dst_files.values(): 
                             dst.close()
                         return False 
-                        
+
                     red = src_rgb.read(mapping['red'], window=window).astype('float32')
                     green = src_rgb.read(mapping['green'], window=window).astype('float32')
-                    
+
                     valid_mask = np.ones(red.shape, dtype=bool)
                     if rgb_nodata is not None:
                         valid_mask &= (red != rgb_nodata) & (green != rgb_nodata)
-                    
+
                     if needs_nir:
                         nir = nir_vrt.read(mapping['nir'], window=window).astype('float32')
                         if nir_nodata is not None:
                             valid_mask &= (nir != nir_nodata)
-                        
+
                     np.seterr(divide='ignore', invalid='ignore')
-                    
+
                     if "ngrdi" in missing: 
                         denom = green + red
                         calc_mask = valid_mask & (denom != 0)
                         out_arr = np.full(red.shape, -1.5, dtype='float32')
                         out_arr[calc_mask] = (green[calc_mask] - red[calc_mask]) / denom[calc_mask]
                         dst_files["ngrdi"].write(out_arr, 1, window=window)
-                        
+
                     if "ndwi" in missing: 
                         denom = green + nir
                         calc_mask = valid_mask & (denom != 0)
                         out_arr = np.full(red.shape, -1.5, dtype='float32')
                         out_arr[calc_mask] = (green[calc_mask] - nir[calc_mask]) / denom[calc_mask]
                         dst_files["ndwi"].write(out_arr, 1, window=window)
-                        
+
                     if "ndvi" in missing: 
                         denom = nir + red
                         calc_mask = valid_mask & (denom != 0)
                         out_arr = np.full(red.shape, -1.5, dtype='float32')
                         out_arr[calc_mask] = (nir[calc_mask] - red[calc_mask]) / denom[calc_mask]
                         dst_files["ndvi"].write(out_arr, 1, window=window)
-                        
+
                     if total_windows > 0 and i % max(1, (total_windows // 100)) == 0: 
                         p.setValue(int((i / total_windows) * 100))
                         QCoreApplication.processEvents()
-                
+
                 if nir_vrt: nir_vrt.close()
                 if src_nir: src_nir.close()
                 src_rgb.close()
-                
+
                 p.setLabelText("Building Overviews (Pyramids)... This may take a minute, please wait.")
                 QCoreApplication.processEvents()
-                
+
                 factors = [2, 4, 8, 16, 32, 64]
-                
+
                 for dst in dst_files.values(): 
                     dst.build_overviews(factors, Resampling.nearest)
                     dst.update_tags(ns='rio_overview', resampling='nearest')
@@ -885,7 +903,7 @@ class HydroBound_ML_App(QMainWindow):
             del dst_files
             gc.collect()
             time.sleep(1.0) 
-            
+
             return True
         except Exception as e: 
             QMessageBox.critical(self, "Generation Error", f"Failed to generate indices: {e}")
@@ -901,27 +919,27 @@ class HydroBound_ML_App(QMainWindow):
         path = QFileDialog.getExistingDirectory(self, "Select Main Project Directory")
         if not path: 
             return
-            
+
         for src in self.data_srcs.values():
             try: src.close()
             except: pass
         self.data_srcs.clear()
         self.layer_norms.clear()
-        
+
         self.clear_manual_samples_ui()
         self.clear_measurements()
         self.clear_edit_drawing()
-        
+
         if self.img_artist:
             try: self.img_artist.remove()
             except: pass
             self.img_artist = None
-            
+
         if self.vector_artist:
             try: self.vector_artist.remove()
             except: pass
             self.vector_artist = None
-            
+
         if self.aoi_artist:
             try: self.aoi_artist.remove()
             except: pass
@@ -932,7 +950,7 @@ class HydroBound_ML_App(QMainWindow):
         self.aoi_lines_cache = [] 
         self.current_model_version = 0 
         self.version_label.setText("Model Version: None")
-        
+
         self.ax.clear()
         self.canvas.draw_idle()
 
@@ -941,7 +959,7 @@ class HydroBound_ML_App(QMainWindow):
         if not os.path.exists(self.input_dir):
             QMessageBox.critical(self, "Directory Error", "Selected directory does not contain an 'INPUT' folder.")
             return
-            
+
         self.output_dir = os.path.join(path, "OUTPUT")
         self.model_dir = os.path.join(path, "MODEL")
         os.makedirs(self.output_dir, exist_ok=True)
@@ -950,7 +968,7 @@ class HydroBound_ML_App(QMainWindow):
         if not self.check_and_generate_indices():
             QMessageBox.information(self, "Project Load Aborted", "Project loading was aborted due to missing indices.")
             return
-        
+
         kml_files = [f for f in os.listdir(self.input_dir) if f.lower().endswith('.kml') and 'aoi' in f.lower()]
         if not kml_files:
             kml_files = [f for f in os.listdir(self.input_dir) if f.lower().endswith('.kml')]
@@ -964,7 +982,7 @@ class HydroBound_ML_App(QMainWindow):
                 QMessageBox.warning(self, "Warning", "AOI selection cancelled. Project will load without KML boundary.")
         elif len(kml_files) == 1:
             self.selected_kml_path = os.path.join(self.input_dir, kml_files[0])
-        
+
         metadata_path = os.path.join(self.input_dir, "metadata.json")
         if os.path.exists(metadata_path):
             try:
@@ -976,7 +994,7 @@ class HydroBound_ML_App(QMainWindow):
             self.project_metadata = None
 
         self.update_layer_ui() 
-        
+
         self.current_model_version = self.find_latest_model_version()
         if self.current_model_version > 0:
             self.version_label.setText(f"Model Version: v{self.current_model_version}")
@@ -1023,27 +1041,27 @@ class HydroBound_ML_App(QMainWindow):
             elif self.get_layer_src("ortho_rgb"):
                 self.layer_buttons["ortho_rgb"].setChecked(True)
                 self.current_layer = "ortho_rgb"
-                
+
             if self.find_layer_path("dtm"):
                 self.get_layer_src("dtm")
-                
+
             src_to_extent = self.get_layer_src(self.current_layer)
 
             if src_to_extent:
                 self.full_extent = [src_to_extent.bounds.left, src_to_extent.bounds.right, src_to_extent.bounds.bottom, src_to_extent.bounds.top]
                 self._is_updating = True
                 self.ax.clear()
-                
+
                 self.img_artist = self.ax.imshow(np.zeros((10, 10)), origin='upper', extent=self.full_extent, zorder=1)
                 self.vector_artist = LineCollection([], color='magenta', linewidth=2.0, zorder=5)
                 self.ax.add_collection(self.vector_artist)
-                
+
                 self.aoi_artist = LineCollection([], color='gold', linewidth=1.5, linestyle='--', zorder=10)
                 self.ax.add_collection(self.aoi_artist)
-                
+
                 self.ax.set_xlim(self.full_extent[0], self.full_extent[1])
                 self.ax.set_ylim(self.full_extent[2], self.full_extent[3])
-                
+
                 if self.selected_kml_path and os.path.exists(self.selected_kml_path):
                     try:
                         aoi_gdf = gpd.read_file(self.selected_kml_path, driver='KML')
@@ -1051,7 +1069,7 @@ class HydroBound_ML_App(QMainWindow):
                             aoi_gdf.set_crs(epsg=4326, inplace=True)
                         if aoi_gdf.crs != src_to_extent.crs: 
                             aoi_gdf = aoi_gdf.to_crs(src_to_extent.crs)
-                        
+
                         self.aoi_lines_cache = []
                         for geom in aoi_gdf.geometry:
                             if geom is None: 
@@ -1065,7 +1083,7 @@ class HydroBound_ML_App(QMainWindow):
                                     self.aoi_lines_cache.append(np.column_stack(poly.exterior.xy))
                                     for interior in poly.interiors: 
                                         self.aoi_lines_cache.append(np.column_stack(interior.xy))
-                        
+
                         self.aoi_artist.set_segments(self.aoi_lines_cache)
                         self.check_aoi.setChecked(True)
                     except Exception as e:
@@ -1128,7 +1146,7 @@ class HydroBound_ML_App(QMainWindow):
         src = self.get_layer_src(self.current_layer)
         if not src or self.img_artist is None: 
             return 
-        
+
         self._is_updating = True 
         cur_xl, cur_yl = self.ax.get_xlim(), self.ax.get_ylim()
         dx, dy = cur_xl[1] - cur_xl[0], cur_yl[1] - cur_yl[0]
@@ -1140,14 +1158,14 @@ class HydroBound_ML_App(QMainWindow):
             win = from_bounds(rx_min, ry_min, rx_max, ry_max, src.transform)
             count = src.count
             data = src.read(list(range(1, count+1)), window=win, out_shape=(count, 800, 800), resampling=rasterio.enums.Resampling.nearest, boundless=True, fill_value=src.nodata or 0)
-            
+
             if src.dtypes[0] == 'int16' and self.current_layer in ['ndwi', 'ndvi', 'ngrdi']:
                 data = data.astype('float32') / 10000.0
                 if src.nodata is not None: 
                     data = np.where(np.isclose(data, src.nodata/10000.0), np.nan, data)
             elif src.nodata is not None and count < 3:
                 data = np.where(np.isclose(data, src.nodata), np.nan, data)
-                
+
             if count >= 3:
                 data_disp = np.transpose(data[:3], (1, 2, 0)).astype(np.uint8)
                 self.img_artist.set_data(data_disp)
@@ -1181,7 +1199,7 @@ class HydroBound_ML_App(QMainWindow):
         x_range, y_range = cur_x[1] - cur_x[0], cur_y[1] - cur_y[0]
         rel_x, rel_y = (event.xdata - cur_x[0]) / x_range, (event.ydata - cur_y[0]) / y_range
         new_width, new_height = x_range * scale, y_range * scale
-        
+
         self.ax.set_xlim([event.xdata - new_width * rel_x, event.xdata + new_width * (1 - rel_x)])
         self.ax.set_ylim([event.ydata - new_height * rel_y, event.ydata + new_height * (1 - rel_y)])
         self.canvas.draw_idle() 
@@ -1210,7 +1228,7 @@ class HydroBound_ML_App(QMainWindow):
         feats = []
         res_x = abs(src_ndwi.transform[0])
         scales = [self.spin_scale_1.value(), self.spin_scale_2.value(), self.spin_scale_3.value()]
-        
+
         src_ndvi = self.get_layer_src("ndvi")
         src_ngrdi = self.get_layer_src("ngrdi")
 
@@ -1222,9 +1240,9 @@ class HydroBound_ML_App(QMainWindow):
             if src.dtypes[0] == 'int16': 
                 val = val / 10000.0
             feats.append(float(val))
-        
+
         row, col = src_ndwi.index(mx, my)
-        
+
         def compute_std(arr):
             valid = arr[np.isfinite(arr)]
             if valid.size == 0: 
@@ -1238,14 +1256,14 @@ class HydroBound_ML_App(QMainWindow):
             if s_px % 2 == 0: 
                 s_px += 1
             h_px = s_px // 2
-            
+
             win = rasterio.windows.Window(col - h_px, row - h_px, s_px, s_px)
-            
+
             arr_ndwi = src_ndwi.read(1, window=win, boundless=True, fill_value=np.nan)
             if src_ndwi.dtypes[0] == 'int16': 
                 arr_ndwi = arr_ndwi.astype(float) / 10000.0
             feats.append(compute_std(arr_ndwi))
-            
+
             arr_ndvi = src_ndvi.read(1, window=win, boundless=True, fill_value=np.nan)
             if src_ndvi.dtypes[0] == 'int16': 
                 arr_ndvi = arr_ndvi.astype(float) / 10000.0
@@ -1255,7 +1273,7 @@ class HydroBound_ML_App(QMainWindow):
             if src_ngrdi.dtypes[0] == 'int16': 
                 arr_ngrdi = arr_ngrdi.astype(float) / 10000.0
             feats.append(compute_std(arr_ngrdi))
-            
+
             if idx < 2:
                 sig = max(1.0, s_px / 3.0)
                 pad = int(math.ceil(sig * 3))
@@ -1265,7 +1283,7 @@ class HydroBound_ML_App(QMainWindow):
                     arr_grad = arr_grad.astype(float) / 10000.0
                 grad_val = ndimage.gaussian_gradient_magnitude(np.nan_to_num(arr_grad, 0), sigma=sig)[pad, pad]
                 feats.append(float(grad_val))
-            
+
         return feats
 
     def on_click(self, event):
@@ -1282,23 +1300,23 @@ class HydroBound_ML_App(QMainWindow):
             return
         if event.inaxes != self.ax or self.toolbar.mode != '': 
             return
-            
+
         # --- 1. MEASUREMENT TOOL ---
         if hasattr(self, 'btn_measure') and self.btn_measure.isChecked() and event.button == 1:
             self._measure_points.append((event.xdata, event.ydata))
             pt, = self.ax.plot(event.xdata, event.ydata, 'yo', ms=6, markeredgecolor='black', zorder=30)
             self._measure_artists.append(pt)
-            
+
             if len(self._measure_points) == 2:
                 x1, y1 = self._measure_points[0]
                 x2, y2 = self._measure_points[1]
                 dist = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-                
+
                 ln, = self.ax.plot([x1, x2], [y1, y2], 'y--', lw=2, zorder=30)
                 mid_x, mid_y = (x1+x2)/2, (y1+y2)/2
                 txt = self.ax.text(mid_x, mid_y, f"{dist:.2f} m", color='black',
                                    bbox=dict(facecolor='yellow', alpha=0.7), zorder=31, ha='center', va='center')
-                
+
                 self._measure_artists.extend([ln, txt])
                 self._measure_points = [] 
             self.canvas.draw_idle()
@@ -1335,7 +1353,7 @@ class HydroBound_ML_App(QMainWindow):
                             new_geoms.append(Polygon(geom.exterior, new_interiors))
                         else:
                             new_geoms.append(geom)
-                            
+
                     elif geom.geom_type == 'MultiPolygon':
                         new_parts = []
                         for poly in geom.geoms:
@@ -1351,7 +1369,7 @@ class HydroBound_ML_App(QMainWindow):
                             else:
                                 new_parts.append(poly)
                         new_geoms.append(MultiPolygon(new_parts))
-                
+
                 if hole_filled:
                     self.vector_mask = gpd.GeoDataFrame({'geometry': new_geoms}, crs=self.vector_mask.crs)
                     self._cache_vector_lines(self.vector_mask)
@@ -1362,37 +1380,37 @@ class HydroBound_ML_App(QMainWindow):
                     self.edit_drawing_points.append((event.xdata, event.ydata))
                     pt, = self.ax.plot(event.xdata, event.ydata, 'ro', ms=4, zorder=35)
                     self.edit_drawing_artists.append(pt)
-                    
+
                     if len(self.edit_drawing_points) > 1:
                         x_vals = [p[0] for p in self.edit_drawing_points]
                         y_vals = [p[1] for p in self.edit_drawing_points]
                         ln, = self.ax.plot(x_vals, y_vals, 'r-', lw=1.5, zorder=35)
                         self.edit_drawing_artists.append(ln)
-                        
+
                     self.canvas.draw_idle()
-                    
+
                 elif event.button == 3:
                     if len(self.edit_drawing_points) >= 3:
                         drawn_poly = Polygon(self.edit_drawing_points)
                         if not drawn_poly.is_valid:
                             drawn_poly = drawn_poly.buffer(0)
-                            
+
                         drawn_gdf = gpd.GeoDataFrame({'geometry': [drawn_poly]}, crs=self.vector_mask.crs)
-                        
+
                         try:
                             if self.edit_mode == 'add_poly':
                                 self.vector_mask = gpd.overlay(self.vector_mask, drawn_gdf, how='union')
                                 self.vector_mask = gpd.GeoDataFrame({'geometry': [self.vector_mask.unary_union]}, crs=self.vector_mask.crs)
                                 self.vector_mask = self.vector_mask.explode(index_parts=False).reset_index(drop=True)
-                                
+
                             elif self.edit_mode == 'cut_poly':
                                 self.vector_mask = gpd.overlay(self.vector_mask, drawn_gdf, how='difference')
                                 self.vector_mask = self.vector_mask.explode(index_parts=False).reset_index(drop=True)
-                                
+
                             self._cache_vector_lines(self.vector_mask)
                         except Exception as e:
                             QMessageBox.warning(self, "Topology Error", f"Could not perform operation: {e}")
-                            
+
                     self.clear_edit_drawing()
                 return
 
@@ -1413,13 +1431,13 @@ class HydroBound_ML_App(QMainWindow):
                 self.update_sample_counter()
                 self.canvas.draw_idle()
             return
-        
+
         # --- 4. ML MANUAL SAMPLING (ADD POINTS) ---
         if event.button not in [1, 3]: 
             return 
         label = 1 if event.button == 1 else 0 
         color = 'lime' if label == 1 else 'red'
-        
+
         try:
             line = self.ax.plot(event.xdata, event.ydata, 'o', color=color, ms=8, markeredgecolor='white', markeredgewidth=1.2, zorder=20)[0]
             self.session_clicks.append((event.xdata, event.ydata, label, line))
@@ -1440,28 +1458,28 @@ class HydroBound_ML_App(QMainWindow):
         if not self.session_clicks and not (manual_path and os.path.exists(manual_path)):
             QMessageBox.warning(self, "Missing Data", "Add manual points on the map first.")
             return
-            
+
         p = QProgressDialog("Extracting spatial features for manual clicks...", "Cancel", 0, 100, self)
         p.setWindowModality(Qt.WindowModality.ApplicationModal)
         p.setFixedSize(500, 150)
         p.show()
         QCoreApplication.processEvents()
-        
+
         try:
             self.samples_X, self.samples_y, self.sample_coords = [], [], []
             if self.session_clicks:
                 src_ndwi = self.get_layer_src("ndwi")
                 if not src_ndwi:
                     raise Exception("NDWI raster required for feature extraction.")
-                
+
                 jitter_m = self.spin_jitter.value()
                 jitter_pts = self.spin_jitter_points.value()
                 total_clicks = len(self.session_clicks)
-                
+
                 for idx, (mx, my, label, _) in enumerate(self.session_clicks):
                     if p.wasCanceled(): 
                         return
-                    
+
                     offsets = [(0, 0)]
                     if jitter_m > 0 and jitter_pts > 0:
                         for i in range(jitter_pts):
@@ -1469,7 +1487,7 @@ class HydroBound_ML_App(QMainWindow):
                             dx = np.cos(angle) * jitter_m
                             dy = np.sin(angle) * jitter_m
                             offsets.append((dx, dy))
-                    
+
                     for dx, dy in offsets:
                         sx, sy = mx + dx, my + dy
                         feats = self.get_multiscale_features(sx, sy, src_ndwi)
@@ -1477,19 +1495,19 @@ class HydroBound_ML_App(QMainWindow):
                             self.samples_X.append(feats)
                             self.samples_y.append(label)
                             self.sample_coords.append((sx, sy))
-                            
+
                     p.setValue(int(30 * (idx / total_clicks))) 
                     QCoreApplication.processEvents()
 
             p.setLabelText("Merging with previous version...")
             QCoreApplication.processEvents()
-            
+
             has_new_samples = len(self.samples_X) > 0
             if has_new_samples:
                 X_manual_current = np.array(self.samples_X)
                 y_manual_current = np.array(self.samples_y)
                 coords_manual_current = np.array(self.sample_coords)
-                
+
             if v > 0 and os.path.exists(manual_path):
                 saved_manual = joblib.load(manual_path)
                 if has_new_samples:
@@ -1502,44 +1520,44 @@ class HydroBound_ML_App(QMainWindow):
                     coords_manual_all = saved_manual['coords']
             else:
                 X_manual_all, y_manual_all, coords_manual_all = X_manual_current, y_manual_current, coords_manual_current
-                
+
             new_v = v + 1
             new_manual_path = os.path.join(self.model_dir, f"HydroBound-ML_v{new_v}_manual_samples.joblib")
             joblib.dump({'X': X_manual_all, 'y': y_manual_all, 'coords': coords_manual_all, 'version': f'1.0.0_v{new_v}'}, new_manual_path)
-            
+
             baseline_path = os.path.join(self.model_dir, "HydroBound-ML_otsu_samples_v1.0.0.joblib")
             filtered_base_len = 0
-            
+
             if os.path.exists(baseline_path):
                 base = joblib.load(baseline_path)
                 X_base, y_base, coords_base = base['X'], base['y'], base.get('coords', None)
-                
+
                 ndwi_base = X_base[:, 0]
                 w_min = self.spin_otsu_water_min.value()
                 l_max = self.spin_otsu_land_max.value()
-                
+
                 core_water = (y_base == 1) & (ndwi_base >= w_min)
                 core_land = (y_base == 0) & (ndwi_base <= l_max)
                 core_mask = core_water | core_land
-                
+
                 X_base = X_base[core_mask]
                 y_base = y_base[core_mask]
                 if coords_base is not None: 
                     coords_base = coords_base[core_mask]
-                
+
                 filtered_base_len = len(X_base)
-                
+
                 otsu_limit = self.spin_otsu_base.value()
                 if len(X_base) > otsu_limit:
                     idx = np.random.choice(len(X_base), otsu_limit, replace=False)
                     X_base = X_base[idx]
                     y_base = y_base[idx]
                     coords_base = coords_base[idx] if coords_base is not None else None
-                
+
                 p.setLabelText("Purging conflicting Otsu errors...")
                 p.setValue(50)
                 QCoreApplication.processEvents()
-                
+
                 deleted_points = 0
                 if coords_base is not None and len(coords_base) > 0:
                     tree = cKDTree(coords_base)
@@ -1574,7 +1592,7 @@ class HydroBound_ML_App(QMainWindow):
 
             repeats = max(1, self.spin_clones.value())
             noise_std = self.spin_noise_aug.value()
-            
+
             if repeats > 1:
                 X_aug_list = [X_m_tr]
                 y_aug_list = [y_m_tr]
@@ -1587,7 +1605,7 @@ class HydroBound_ML_App(QMainWindow):
             else:
                 X_m_tr_expanded = X_m_tr
                 y_m_tr_expanded = y_m_tr
-                
+
             if len(X_b_tr) > 0:
                 X_train = np.vstack((X_b_tr, X_m_tr_expanded))
                 y_train = np.concatenate((y_b_tr, y_m_tr_expanded))
@@ -1596,45 +1614,45 @@ class HydroBound_ML_App(QMainWindow):
                 X_train = X_m_tr_expanded
                 y_train = y_m_tr_expanded
                 w_train = np.full(len(y_m_tr_expanded), self.spin_weight.value())
-                
+
             if len(X_b_val) > 0:
                 X_eval = np.vstack((X_b_val, X_m_val))
                 y_eval = np.concatenate((y_b_val, y_m_val))
             else:
                 X_eval = X_m_val
                 y_eval = y_m_val
-                
+
             p.setLabelText(f"Training Model Version v{new_v}...")
             p.setValue(70)
             QCoreApplication.processEvents()
-            
+
             max_depth_val = self.spin_max_depth.value()
             clf_depth = None if max_depth_val == 0 else max_depth_val
             min_leaf_val = self.spin_min_leaf.value()
-            
+
             clf = RandomForestClassifier(n_estimators=150, max_depth=clf_depth, min_samples_leaf=min_leaf_val, n_jobs=-1, random_state=42)
             clf.fit(X_train, y_train, sample_weight=w_train)
-            
+
             s1, s2, s3 = self.spin_scale_1.value(), self.spin_scale_2.value(), self.spin_scale_3.value()
             new_model_path = os.path.join(self.model_dir, f"HydroBound-ML_v{new_v}.joblib")
             joblib.dump({'clf': clf, 'scales': [s1, s2, s3]}, new_model_path)
-            
+
             self.current_model_version = new_v
             self.version_label.setText(f"Model Version: v{new_v}")
-            
+
             self.spin_scale_1.setEnabled(False)
             self.spin_scale_2.setEnabled(False)
             self.spin_scale_3.setEnabled(False)
             self.btn_unlock.setEnabled(True)
-            
+
             preds_eval = clf.predict(X_eval)
             precision, recall, f1, _ = precision_recall_fscore_support(y_eval, preds_eval, average='binary', zero_division=0)
             iou = jaccard_score(y_eval, preds_eval, zero_division=0)
-            
+
             acc_manual = np.mean(clf.predict(X_m_val) == y_m_val) if len(X_m_val) > 0 else 0.0
             cm = confusion_matrix(y_eval, preds_eval)
             tn, fp, fn, tp = cm.ravel() if len(cm.ravel()) == 4 else (0,0,0,0)
-            
+
             log_path = os.path.join(self.model_dir, "HydroBound-ML_metrics_log.txt")
             with open(log_path, "a") as f:
                 f.write(f"--- Training Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Version: v{new_v} ---\n")
@@ -1669,7 +1687,7 @@ class HydroBound_ML_App(QMainWindow):
         src_ndwi = self.get_layer_src('ndwi')
         src_ndvi = self.get_layer_src('ndvi')
         src_ngrdi = self.get_layer_src('ngrdi')
-        
+
         if not src_ndwi or not src_ndvi or not src_ngrdi:
             QMessageBox.warning(self, "Error", "NDWI, NDVI and NGRDI layers required.")
             return
@@ -1678,7 +1696,7 @@ class HydroBound_ML_App(QMainWindow):
         model_exists = v > 0
         model_path = os.path.join(self.model_dir, f"HydroBound-ML_v{v}.joblib") if model_exists else ""
         otsu_cache_path = os.path.join(self.model_dir, "HydroBound-ML_otsu_samples_v1.0.0.joblib")
-            
+
         p = QProgressDialog(f"Predicting ML v{v}..." if model_exists else "Bootstrapping Spatial Otsu...", "Cancel", 0, 100, self)
         p.setWindowModality(Qt.WindowModality.ApplicationModal)
         p.setFixedSize(500, 150)
@@ -1688,12 +1706,12 @@ class HydroBound_ML_App(QMainWindow):
         try:
             p.setLabelText("Reading Global Rasters & Filtering KML AOI...")
             QCoreApplication.processEvents()
-            
+
             kml_files = [f for f in os.listdir(self.input_dir) if f.lower().endswith('.kml')]
             aoi_window = None
             aoi_transform = src_ndwi.transform
             valid_conditions = None
-            
+
             if self.selected_kml_path and os.path.exists(self.selected_kml_path):
                 try:
                     aoi_gdf = gpd.read_file(self.selected_kml_path, driver='KML')
@@ -1701,7 +1719,7 @@ class HydroBound_ML_App(QMainWindow):
                         aoi_gdf.set_crs(epsg=4326, inplace=True)
                     if aoi_gdf.crs != src_ndwi.crs: 
                         aoi_gdf = aoi_gdf.to_crs(src_ndwi.crs)
-                    
+
                     if not aoi_gdf.empty:
                         minx, miny, maxx, maxy = aoi_gdf.total_bounds
                         aoi_window = from_bounds(minx, miny, maxx, maxy, src_ndwi.transform)
@@ -1724,11 +1742,11 @@ class HydroBound_ML_App(QMainWindow):
                     if src.nodata is not None:
                         r = np.where(np.isclose(r, src.nodata), np.nan, r)
                 return r
-                
+
             ndwi = get_arr_cropped(src_ndwi, aoi_window)
             ndvi = get_arr_cropped(src_ndvi, aoi_window)
             ngrdi = get_arr_cropped(src_ngrdi, aoi_window)
-            
+
             valid_conditions = np.isfinite(ndwi) & np.isfinite(ndvi) & np.isfinite(ngrdi) & (ndwi > -1.5) & (ndvi > -1.5) & (ngrdi > -1.5)
 
             if self.selected_kml_path and 'aoi_gdf' in locals() and not aoi_gdf.empty:
@@ -1739,7 +1757,7 @@ class HydroBound_ML_App(QMainWindow):
             p.setLabelText("Checking for cached Multi-Scale Textures (14D)...")
             p.setValue(15)
             QCoreApplication.processEvents()
-            
+
             res_x = abs(aoi_transform[0])
             s1, s2, s3 = self.spin_scale_1.value(), self.spin_scale_2.value(), self.spin_scale_3.value()
             if model_exists:
@@ -1751,10 +1769,10 @@ class HydroBound_ML_App(QMainWindow):
                     pass
 
             scales = [s1, s2, s3]
-            
+
             kml_id = os.path.splitext(os.path.basename(self.selected_kml_path))[0] if self.selected_kml_path else "full"
             textures_cache_path = os.path.join(self.model_dir, f"HydroBound-ML_textures_cache_v1.0.0_{kml_id}_{s1}_{s2}_{s3}.joblib")
-            
+
             recalc = True
             if os.path.exists(textures_cache_path):
                 try:
@@ -1768,12 +1786,12 @@ class HydroBound_ML_App(QMainWindow):
                 p.setLabelText("Calculating Spatial Features & Gradients...")
                 QCoreApplication.processEvents()
                 scale_features = []
-                
+
                 for idx, m_scale in enumerate(scales):
                     s_px = max(1, int(round(m_scale / res_x)))
                     if s_px % 2 == 0: 
                         s_px += 1
-                    
+
                     for arr in [ndwi, ndvi, ngrdi]: 
                         c1 = ndimage.uniform_filter(arr, size=s_px, mode='reflect')
                         c2 = ndimage.uniform_filter(arr**2, size=s_px, mode='reflect')
@@ -1781,15 +1799,15 @@ class HydroBound_ML_App(QMainWindow):
                         scale_features.append(feature)
                         del c1, c2
                         gc.collect()
-                        
+
                     if idx < 2:
                         sig = max(1.0, s_px / 3.0)
                         grad = ndimage.gaussian_gradient_magnitude(np.nan_to_num(ndwi, 0), sigma=sig).astype('float32')
                         scale_features.append(grad)
-                        
+
                     p.setValue(15 + int(20 * ((idx + 1) / 3)))
                     QCoreApplication.processEvents()
-                    
+
                 joblib.dump(scale_features, textures_cache_path)
             else:
                 p.setLabelText("Loading cached Multi-Scale Textures...")
@@ -1803,74 +1821,74 @@ class HydroBound_ML_App(QMainWindow):
                 p.setLabelText("Executing Inference...")
                 p.setValue(40)
                 QCoreApplication.processEvents()
-                
+
                 saved_data = joblib.load(model_path)
                 clf = saved_data['clf'] if isinstance(saved_data, dict) else saved_data
-                
+
                 valid_indices = np.where(valid_conditions)
                 total_valid = len(valid_indices[0])
-                
+
                 prob_map = np.zeros_like(ndwi, dtype='float32')
                 water_class_idx = np.where(clf.classes_ == 1)[0][0]
-                
+
                 chunk_size = 1000000 
                 for start_idx in range(0, total_valid, chunk_size):
                     end_idx = min(start_idx + chunk_size, total_valid)
                     chunk_rows, chunk_cols = valid_indices[0][start_idx:end_idx], valid_indices[1][start_idx:end_idx]
-                    
+
                     X_chunk = np.column_stack((
                         ndwi[chunk_rows, chunk_cols], ndvi[chunk_rows, chunk_cols], ngrdi[chunk_rows, chunk_cols],
                         scale_features[0][chunk_rows, chunk_cols], scale_features[1][chunk_rows, chunk_cols], scale_features[2][chunk_rows, chunk_cols], scale_features[3][chunk_rows, chunk_cols], 
                         scale_features[4][chunk_rows, chunk_cols], scale_features[5][chunk_rows, chunk_cols], scale_features[6][chunk_rows, chunk_cols], scale_features[7][chunk_rows, chunk_cols], 
                         scale_features[8][chunk_rows, chunk_cols], scale_features[9][chunk_rows, chunk_cols], scale_features[10][chunk_rows, chunk_cols]
                     ))
-                    
+
                     y_proba = clf.predict_proba(X_chunk)[:, water_class_idx]
                     prob_map[chunk_rows, chunk_cols] = y_proba
                     del X_chunk
                     gc.collect()
-                    
+
                     p.setValue(40 + int(30 * (end_idx / total_valid)))
                     QCoreApplication.processEvents()
-                
+
                 p.setLabelText("Binarizing ML Output via Strict Threshold...")
                 p.setValue(75)
                 QCoreApplication.processEvents()
-                
+
                 thresh = self.spin_prob_thresh.value()
                 water_mask = (prob_map >= thresh).astype('uint8')
                 water_mask[~valid_conditions] = 0
-                
+
                 msg_success += f"Global ML mask generated with strict threshold: {thresh:.2f}!\n"
                 del prob_map
                 gc.collect()
-                
+
             elif os.path.exists(otsu_cache_path):
                 p.setLabelText("Loading cached OTSU mask...")
                 p.setValue(40)
                 QCoreApplication.processEvents()
                 cached_full_mask = joblib.load(otsu_cache_path)
                 water_mask = cached_full_mask[aoi_window.row_off:aoi_window.row_off+aoi_window.height, aoi_window.col_off:aoi_window.col_off+aoi_window.width]
-                
+
                 p.setLabelText("Bootstrapping Spatial ML Base...")
                 p.setValue(55)
                 QCoreApplication.processEvents()
-                
+
                 water_idx = np.where((valid_conditions) & (water_mask == 1))
                 land_idx = np.where((valid_conditions) & (water_mask == 0))
-                
+
                 limit = 10000 
                 w_sel = np.random.choice(len(water_idx[0]), min(len(water_idx[0]), limit), replace=False)
                 l_sel = np.random.choice(len(land_idx[0]), min(len(land_idx[0]), limit), replace=False)
-                
+
                 w_rows, w_cols = water_idx[0][w_sel], water_idx[1][w_sel]
                 l_rows, l_cols = land_idx[0][l_sel], land_idx[1][l_sel]
-                
+
                 coords_w_x = aoi_transform[2] + w_cols * aoi_transform[0] + w_rows * aoi_transform[1]
                 coords_w_y = aoi_transform[5] + w_cols * aoi_transform[3] + w_rows * aoi_transform[4]
                 coords_l_x = aoi_transform[2] + l_cols * aoi_transform[0] + l_rows * aoi_transform[1]
                 coords_l_y = aoi_transform[5] + l_cols * aoi_transform[3] + l_rows * aoi_transform[4]
-                
+
                 X_w = np.column_stack((
                     ndwi[w_rows, w_cols], ndvi[w_rows, w_cols], ngrdi[w_rows, w_cols], 
                     scale_features[0][w_rows, w_cols], scale_features[1][w_rows, w_cols], scale_features[2][w_rows, w_cols], scale_features[3][w_rows, w_cols],
@@ -1883,11 +1901,11 @@ class HydroBound_ML_App(QMainWindow):
                     scale_features[4][l_rows, l_cols], scale_features[5][l_rows, l_cols], scale_features[6][l_rows, l_cols], scale_features[7][l_rows, l_cols],
                     scale_features[8][l_rows, l_cols], scale_features[9][l_rows, l_cols], scale_features[10][l_rows, l_cols]
                 ))
-                
+
                 X_train_base = np.vstack((X_w, X_l))
                 y_train_base = np.concatenate((np.ones(len(X_w)), np.zeros(len(X_l))))
                 coords_base = np.vstack((np.column_stack((coords_w_x, coords_w_y)), np.column_stack((coords_l_x, coords_l_y))))
-                
+
                 joblib.dump({'X': X_train_base, 'y': y_train_base, 'coords': coords_base, 'version': '1.0.0'}, os.path.join(self.model_dir, "HydroBound-ML_otsu_samples_v1.0.0.joblib"))
                 msg_success += "Spatial Otsu Base generated and cached!\n"
 
@@ -1897,39 +1915,39 @@ class HydroBound_ML_App(QMainWindow):
             if self.check_vector_snap.isChecked():
                 p.setLabelText("Generating Superpixels (OBIA)...")
                 QCoreApplication.processEvents()
-                
+
                 img_slic = np.dstack((
                     np.nan_to_num(ndwi, nan=0.0),
                     np.nan_to_num(ndvi, nan=0.0),
                     np.nan_to_num(ngrdi, nan=0.0)
                 ))
-                
+
                 img_slic = (img_slic + 1.0) / 2.0 
-                
+
                 target_area_m2 = self.spin_slic_area.value()
                 compactness = self.spin_slic_compactness.value()
                 pixel_area_m2 = res_x * abs(aoi_transform[4])
                 pixels_per_segment = target_area_m2 / pixel_area_m2
                 n_segments = max(10, int((img_slic.shape[0] * img_slic.shape[1]) / pixels_per_segment))
-                
+
                 segments = slic(img_slic, n_segments=n_segments, compactness=compactness, start_label=1)
-                
+
                 p.setLabelText("Fusing Geometry (OBIA) with Semantics (ML)...")
                 QCoreApplication.processEvents()
-                
+
                 # Optimized vectorization using NumPy bincount to avoid nested spatial loops
                 seg_flat = segments.ravel()
                 water_flat = water_mask.ravel()
-                
+
                 seg_counts = np.bincount(seg_flat)
                 water_counts = np.bincount(seg_flat, weights=water_flat)
-                
+
                 with np.errstate(divide='ignore', invalid='ignore'):
                     water_ratio = np.where(seg_counts > 0, water_counts / seg_counts, 0)
-                
+
                 obia_ratio_thresh = self.spin_obia_ratio.value()
                 obia_water_mask = (water_ratio[segments] >= obia_ratio_thresh).astype('uint8')
-                        
+
                 water_mask = obia_water_mask
                 msg_success += f"OBIA Superpixel Snap applied (Ratio: {obia_ratio_thresh}).\n"
 
@@ -1943,13 +1961,13 @@ class HydroBound_ML_App(QMainWindow):
             p.setLabelText("Vectorizing final mask...")
             p.setValue(85)
             QCoreApplication.processEvents()
-            
+
             shapes = rasterio.features.shapes(water_mask, mask=(water_mask==1), transform=aoi_transform)
             polygons = [shape(geom) for geom, value in shapes]
             gdf = gpd.GeoDataFrame({'geometry': polygons}, crs=src_ndwi.crs)
             del water_mask
             gc.collect()
-            
+
             if not gdf.empty:
                 noise_threshold_pct = self.spin_noise_filter.value() / 100.0
                 if noise_threshold_pct > 0.0:
@@ -1958,33 +1976,33 @@ class HydroBound_ML_App(QMainWindow):
                     QCoreApplication.processEvents()
                     max_area = gdf.geometry.area.max()
                     gdf = gdf[gdf.geometry.area >= max_area * noise_threshold_pct] 
-                
+
                 smooth_radius = self.spin_smooth_radius.value()
                 if smooth_radius > 0.0:
                     p.setLabelText("Applying Organic Smoothing...")
                     QCoreApplication.processEvents()
                     gdf['geometry'] = gdf.geometry.buffer(smooth_radius, join_style=1).buffer(-smooth_radius * 2, join_style=1).buffer(smooth_radius, join_style=1)
-                
+
                 gdf['geometry'] = gdf.geometry.simplify(tolerance=res_x * 0.5, preserve_topology=False)
                 gdf['geometry'] = gdf.geometry.buffer(0)
                 gdf = gdf[~gdf.geometry.is_empty & gdf.geometry.notnull()]
-                
+
                 self.vector_mask = gdf
                 self._cache_vector_lines(self.vector_mask)
                 self.check_mask.setChecked(True)
                 self.toggle_vector_visibility()
-                
+
                 # Uncheck all editing tools and measurement tool after prediction reset
                 self.edit_mode = None
                 for b in self.edit_btns: b.setChecked(False)
                 self.btn_measure.setChecked(False)
                 self.clear_edit_drawing()
                 self.clear_measurements()
-                
+
                 QMessageBox.information(self, "Success", msg_success)
             else:
                 QMessageBox.warning(self, "Warning", "No water boundary detected.")
-                
+
         except Exception as e: 
             QMessageBox.critical(self, "Error", f"Prediction failed: {e}")
         finally: 
@@ -2009,10 +2027,10 @@ class HydroBound_ML_App(QMainWindow):
             p.setLabelText("Exporting standard polygon...")
             p.setValue(20)
             QCoreApplication.processEvents()
-            
+
             out_nogrid = os.path.join(self.output_dir, f"{timestamp}_water_boundary_polygon.geojson")
             self.vector_mask.to_file(out_nogrid, driver='GeoJSON', engine='fiona')
-            
+
             if self.check_export_grid.isChecked():
                 p.setLabelText("Generating grid...")
                 p.setValue(40)
@@ -2023,7 +2041,7 @@ class HydroBound_ML_App(QMainWindow):
                 minx, miny, maxx, maxy = self.vector_mask.total_bounds
                 x_coords = np.arange(minx, maxx, grid_size)
                 y_coords = np.arange(miny, maxy, grid_size)
-                
+
                 grid_polys = [box(x, y, x + grid_size, y + grid_size) for x in x_coords for y in y_coords]
                 grid_gdf = gpd.GeoDataFrame({'geometry': grid_polys}, crs=self.vector_mask.crs)
 
@@ -2060,7 +2078,7 @@ class HydroBound_ML_App(QMainWindow):
                 p.setLabelText("Exporting...")
                 p.setValue(95)
                 QCoreApplication.processEvents()
-                
+
                 out_grid = os.path.join(self.output_dir, f"{timestamp}_water_boundary_polygon_grid.geojson")
                 clipped_grid.to_file(out_grid, driver='GeoJSON', engine='fiona')
                 QMessageBox.information(self, "Success", f"Saved:\n1) {out_nogrid}\n2) {out_grid}")
@@ -2080,10 +2098,4 @@ if __name__ == "__main__":
     ex = HydroBound_ML_App()
     ex.show()
     sys.exit(app.exec())
-
-
-# In[ ]:
-
-
-
 
