@@ -80,12 +80,17 @@ F1-Score: 0.924 | IoU (Jaccard Index): 0.859
 🛡️ Installation & Requirements
 Requires Python 3.10+. Use a dedicated virtual environment (venv):
 
+```
 Bash
 python -m venv venv
 venv\Scripts\activate
 pip install numpy scipy scikit-learn scikit-image rasterio geopandas shapely pyproj fiona joblib matplotlib pyqt6 jupyter ipykernel
+```
+
 Execute via terminal:
 
+```
 Bash
 python "HydroBound-ML Assistant v.1.0.7 (Release).py"
 License: MIT License (See LICENSE file for details).
+```
