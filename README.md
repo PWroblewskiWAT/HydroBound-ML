@@ -92,5 +92,6 @@ Execute via terminal:
 ```
 Bash
 python "HydroBound-ML Assistant v.1.0.7 (Release).py"
-License: MIT License (See LICENSE file for details).
 ```
+
+License: MIT License (See LICENSE file for details).
