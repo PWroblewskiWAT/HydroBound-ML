@@ -5,8 +5,9 @@ An open-source, advanced hybrid machine learning and Object-Based Image Analysis
 ## 📖 Scientific Publication & Citation
 This software, along with the accompanying dataset and trained models, is an integral part of the research cycle developed for the doctoral dissertation at the Military University of Technology (Warsaw, Poland). If you use this software in your research, please cite:
 
-> **Wróblewski, P., & Fryśkowska-Skibniewska, A. (2026).** *HydroBound-ML: Automated Water Surface Mask Generation for Airborne Lidar Bathymetry Processing Using Hybrid Machine Learning and Object-Based Image Analysis*. Sensors. 
+> **Wróblewski, P., & Fryśkowska-Skibniewska, A. (2026).** *HydroBound-ML: Automated Water-Surface-Mask Generation for Airborne Lidar Bathymetry Processing Using Hybrid Machine Learning and Object-Based Image Analysis*. Sensors. 
 > **DOI:** [Insert Link/DOI Here when published]
+> *Wróblewski, P.; Fryśkowska-Skibniewska, A.* **HydroBound-ML: Automated Water-Surface-Mask Generation for Airborne Lidar Bathymetry Processing Using Hybrid Machine Learning and Object-Based Image Analysis.** *Sensors 2026, 26, 6065. https://doi.org/10.3390/s26196065*
 
 ### 👨‍💻 Author & Affiliation
 **Patryk Wróblewski**
