@@ -19,7 +19,8 @@ EN: Department of Imagery Intelligence, Faculty of Civil Engineering and Geodesy
 
 Publication Reference:
 ----------------------
-[Insert Title of the Article / DOI Link here upon publication]
+Wróblewski, P.; Fryśkowska-Skibniewska, A. HydroBound-ML: Automated Water-Surface-Mask Generation for Airborne Lidar Bathymetry Processing Using Hybrid Machine Learning and Object-Based Image Analysis. 
+Sensors 2026, 26, 6065. https://doi.org/10.3390/s26196065
 
 Description:
 ------------
