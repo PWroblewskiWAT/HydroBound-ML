@@ -1,4 +1,4 @@
-# HydroBound-ML Assistant (v.1.0.8)
+# HydroBound-ML Assistant (v.1.0.9)
 
 An open-source, advanced hybrid machine learning and Object-Based Image Analysis (OBIA) tool designed for automated water body delineation and high-precision boundary vectorization from aerial and UAV-based multispectral imagery.
 
@@ -63,7 +63,7 @@ Data Dependency Logic
 
 \* Model Features: The machine learning model relies solely on the spectral indices and their derived spatial textures. Once indices are available, source orthomosaics are not invoked during training or prediction phases.
 
-📊 Pre-trained Model Performance (v1.0.8)
+📊 Pre-trained Model Performance (v1.0.9)
 The included robust Random Forest model was trained on the Magnuszew_2026 dataset (available publicly on FigShare) to combat extreme infrastructural noise (bridges, railways, dark asphalt) overlapping with turbid river waters.
 
 Data Integrity Architecture: To ensure strict scientific validation and prevent spatial information leakage during the Human-in-the-Loop active learning phase, the framework incorporates a density-based spatial clustering algorithm (DBSCAN) combined with a Group Shuffle Split (80:20). This guarantees that jitter-augmented points adjacent to a single manual click strictly fall into the same validation subset.
@@ -90,7 +90,7 @@ Execute via terminal:
 
 ```
 Bash
-python "HydroBound-ML Assistant v.1.0.8 (Release).py"
+python "HydroBound-ML Assistant v.1.0.9 (Release).py"
 ```
 
 License: MIT License (See LICENSE file for details).
